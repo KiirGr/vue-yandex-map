@@ -1,30 +1,83 @@
-<script setup>
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <header>
-    <img
-      alt="Vue logo"
-      class="logo"
-      src="@/assets/logo.svg"
-      width="125"
-      height="125"
+  <div>
+    <span>Адреса:</span>
+    <ul>
+      <li v-for="(singleAdress, idx) in adressList" v-bind:key="idx">
+        {{ singleAdress }}
+      </li>
+    </ul>
+  </div>
+  <div>
+    Карта:
+    <div id="map" style="width: 600px; height: 400px"></div>
+  </div>
+  <div>
+    <label for="adressField" class="block text-sm font-medium text-gray-700"
+      >Введите адрес:</label
+    >
+    <input
+      v-model="adressField"
+      v-on:keydown.enter="add($event.target.value)"
+      type="text"
+      name="adressField"
+      id="adressField"
+      placeholder="Метро Пушкинская"
     />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
-  </header>
-
-  <RouterView />
+    <button v-on:click="buttonClick()" type="button">Добавить</button>
+  </div>
 </template>
+
+<script>
+export default {
+  name: 'App',
+
+  data() {
+    return {
+      adressField: '',
+      adressList: [],
+      coordinatesArr: [],
+    }
+  },
+
+  created() {
+    // Инициализация карты после создания
+    window.ymaps.ready(initMap)
+    // Создание карты
+    function initMap() {
+      let myMap = new window.ymaps.Map('map', {
+        center: [55.76, 37.64],
+        zoom: 13,
+      })
+      const suggestedAdress = new window.ymaps.SuggestView('adressField')
+
+      return suggestedAdress
+    }
+  },
+
+  methods: {
+    add(adressInputValue) {
+      this.adressField = adressInputValue
+
+      const resultCoordinates = window.ymaps.geocode(this.adressField)
+
+      resultCoordinates
+        .then(res => {
+          this.coordinatesArr.push(
+            res.geoObjects.get(0).geometry.getCoordinates(),
+          )
+          console.log(this.coordinatesArr)
+        })
+        .catch(err => alert(`Произошла ошибка: ${err}`))
+
+      this.adressList.push(this.adressField)
+      this.adressField = ''
+    },
+    buttonClick() {
+      this.add(document.getElementById('adressField').value)
+    },
+  },
+}
+</script>
 
 <style scoped>
 header {
