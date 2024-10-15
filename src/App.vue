@@ -1,3 +1,6 @@
+<script setup>
+import { ref, toRaw } from 'vue'
+</script>
 <template>
   <div>
     <span>Адреса:</span>
@@ -17,7 +20,7 @@
     >
     <input
       v-model="adressField"
-      v-on:keydown.enter="add($event.target.value)"
+      v-on:keydown.enter="addPoint($event.target.value)"
       type="text"
       name="adressField"
       id="adressField"
@@ -34,46 +37,65 @@ export default {
   data() {
     return {
       adressField: '',
+      coordinatesString: '',
       adressList: [],
       coordinatesArr: [],
+      myMap: new Object(),
     }
   },
 
   created() {
     // Инициализация карты после создания
-    window.ymaps.ready(initMap)
+    window.ymaps.ready(this.initMap)
+  },
+
+  methods: {
     // Создание карты
-    function initMap() {
-      let myMap = new window.ymaps.Map('map', {
+    initMap() {
+      // const myMap = ref(null)
+      this.myMap = new window.ymaps.Map('map', {
         center: [55.76, 37.64],
         zoom: 13,
       })
       const suggestedAdress = new window.ymaps.SuggestView('adressField')
 
       return suggestedAdress
-    }
-  },
+    },
 
-  methods: {
-    add(adressInputValue) {
+    addPoint(adressInputValue) {
       this.adressField = adressInputValue
 
       const resultCoordinates = window.ymaps.geocode(this.adressField)
 
       resultCoordinates
         .then(res => {
-          this.coordinatesArr.push(
-            res.geoObjects.get(0).geometry.getCoordinates(),
-          )
-          console.log(this.coordinatesArr)
+          this.coordinatesString = res.geoObjects
+            .get(0)
+            .geometry.getCoordinates()
         })
         .catch(err => alert(`Произошла ошибка: ${err}`))
-
       this.adressList.push(this.adressField)
       this.adressField = ''
     },
     buttonClick() {
-      this.add(document.getElementById('adressField').value)
+      this.addPoint(document.getElementById('adressField').value)
+    },
+  },
+
+  watch: {
+    coordinatesString(value) {
+      this.coordinatesArr.push(value)
+      const points = JSON.parse(JSON.stringify(this.coordinatesArr))
+
+      if (points.length === 1) {
+        const placemark = new window.ymaps.Placemark(points[0])
+
+        const lol = toRaw(this.myMap)
+        // console.log(lol)
+        lol.geoObjects.add(placemark)
+        lol.setCenter(points[0])
+        return
+      }
     },
   },
 }
