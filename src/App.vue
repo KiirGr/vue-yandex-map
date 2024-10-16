@@ -7,6 +7,9 @@ import { ref, toRaw } from 'vue'
     <ul>
       <li v-for="(singleAdress, idx) in adressList" v-bind:key="idx">
         {{ singleAdress }}
+        <button v-on:click="deletePoint(idx)" type="button">
+          Удалить точку - {{ idx }}
+        </button>
       </li>
     </ul>
   </div>
@@ -37,7 +40,8 @@ export default {
   data() {
     return {
       adressField: '',
-      coordinatesString: '',
+      pointToAdd: '',
+      pointToDelete: '',
       adressList: [],
       coordinatesArr: [],
       myMap: new Object(),
@@ -62,6 +66,7 @@ export default {
       return suggestedAdress
     },
 
+    // добавление адреса в список и отправка координат точки
     addPoint(adressInputValue) {
       this.adressField = adressInputValue
 
@@ -69,9 +74,7 @@ export default {
 
       resultCoordinates
         .then(res => {
-          this.coordinatesString = res.geoObjects
-            .get(0)
-            .geometry.getCoordinates()
+          this.pointToAdd = res.geoObjects.get(0).geometry.getCoordinates()
         })
         .catch(err => alert(`Произошла ошибка: ${err}`))
       this.adressList.push(this.adressField)
@@ -80,22 +83,77 @@ export default {
     buttonClick() {
       this.addPoint(document.getElementById('adressField').value)
     },
+
+    deletePoint(pointIndex) {
+      this.pointToDelete = pointIndex
+    },
   },
 
   watch: {
-    coordinatesString(value) {
+    // отслеживание получения координат точки и установка последней на карту согласно коорданатам
+    pointToAdd(value) {
       this.coordinatesArr.push(value)
       const points = JSON.parse(JSON.stringify(this.coordinatesArr))
+      const toRawMap = toRaw(this.myMap)
+      toRawMap.geoObjects.removeAll()
 
       if (points.length === 1) {
         const placemark = new window.ymaps.Placemark(points[0])
 
-        const lol = toRaw(this.myMap)
-        // console.log(lol)
-        lol.geoObjects.add(placemark)
-        lol.setCenter(points[0])
+        toRawMap.geoObjects.add(placemark)
+        toRawMap.setCenter(points[0])
         return
       }
+      window.ymaps
+        .route(points, {
+          multiRoute: false,
+        })
+        .done(
+          route => {
+            route.options.set('mapStateAutoApply', true)
+            toRawMap.geoObjects.add(route)
+          },
+          err => {
+            // err.message or write your own message
+            const errorMsg = `Произошла ошибка: ${err}`
+
+            alert(errorMsg)
+          },
+          this,
+        )
+    },
+
+    pointToDelete(value) {
+      this.coordinatesArr.splice(value, 1)
+      const points = JSON.parse(JSON.stringify(this.coordinatesArr))
+      console.log(this.coordinatesArr)
+      const toRawMap = toRaw(this.myMap)
+      toRawMap.geoObjects.removeAll()
+
+      if (points.length === 1) {
+        const placemark = new window.ymaps.Placemark(points[0])
+
+        toRawMap.geoObjects.add(placemark)
+        toRawMap.setCenter(points[0])
+        return
+      }
+      window.ymaps
+        .route(points, {
+          multiRoute: false,
+        })
+        .done(
+          route => {
+            route.options.set('mapStateAutoApply', true)
+            toRawMap.geoObjects.add(route)
+          },
+          err => {
+            // err.message or write your own message
+            const errorMsg = `Произошла ошибка: ${err}`
+
+            alert(errorMsg)
+          },
+          this,
+        )
     },
   },
 }
