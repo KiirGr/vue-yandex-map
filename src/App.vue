@@ -1,30 +1,163 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
+import { ref, toRaw } from 'vue'
 </script>
-
 <template>
-  <header>
-    <img
-      alt="Vue logo"
-      class="logo"
-      src="@/assets/logo.svg"
-      width="125"
-      height="125"
+  <div>
+    <span>Адреса:</span>
+    <ul>
+      <li v-for="(singleAdress, idx) in adressList" v-bind:key="idx">
+        {{ singleAdress }}
+        <button v-on:click="deletePoint(idx)" type="button">
+          Удалить точку - {{ idx }}
+        </button>
+      </li>
+    </ul>
+  </div>
+  <div>
+    Карта:
+    <div id="map" style="width: 600px; height: 400px"></div>
+  </div>
+  <div>
+    <label for="adressField" class="block text-sm font-medium text-gray-700"
+      >Введите адрес:</label
+    >
+    <input
+      v-model="adressField"
+      v-on:keydown.enter="addPoint($event.target.value)"
+      type="text"
+      name="adressField"
+      id="adressField"
+      placeholder="Метро Пушкинская"
     />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
-  </header>
-
-  <RouterView />
+    <button v-on:click="buttonClick()" type="button">Добавить</button>
+  </div>
 </template>
+
+<script>
+export default {
+  name: 'App',
+
+  data() {
+    return {
+      adressField: '',
+      pointToAdd: '',
+      pointToDelete: '',
+      adressList: [],
+      coordinatesArr: [],
+      myMap: new Object(),
+    }
+  },
+
+  created() {
+    // Инициализация карты после создания
+    window.ymaps.ready(this.initMap)
+  },
+
+  methods: {
+    // Создание карты
+    initMap() {
+      // const myMap = ref(null)
+      this.myMap = new window.ymaps.Map('map', {
+        center: [55.76, 37.64],
+        zoom: 13,
+      })
+      const suggestedAdress = new window.ymaps.SuggestView('adressField')
+
+      return suggestedAdress
+    },
+
+    // добавление адреса в список и отправка координат точки
+    addPoint(adressInputValue) {
+      this.adressField = adressInputValue
+
+      const resultCoordinates = window.ymaps.geocode(this.adressField)
+
+      resultCoordinates
+        .then(res => {
+          this.pointToAdd = res.geoObjects.get(0).geometry.getCoordinates()
+        })
+        .catch(err => alert(`Произошла ошибка: ${err}`))
+      this.adressList.push(this.adressField)
+      this.adressField = ''
+    },
+    buttonClick() {
+      this.addPoint(document.getElementById('adressField').value)
+    },
+
+    deletePoint(pointIndex) {
+      this.pointToDelete = pointIndex
+    },
+  },
+
+  watch: {
+    // отслеживание получения координат точки и установка последней на карту согласно коорданатам
+    pointToAdd(value) {
+      this.coordinatesArr.push(value)
+      const points = JSON.parse(JSON.stringify(this.coordinatesArr))
+      const toRawMap = toRaw(this.myMap)
+      toRawMap.geoObjects.removeAll()
+
+      if (points.length === 1) {
+        const placemark = new window.ymaps.Placemark(points[0])
+
+        toRawMap.geoObjects.add(placemark)
+        toRawMap.setCenter(points[0])
+        return
+      }
+      window.ymaps
+        .route(points, {
+          multiRoute: false,
+        })
+        .done(
+          route => {
+            route.options.set('mapStateAutoApply', true)
+            toRawMap.geoObjects.add(route)
+          },
+          err => {
+            // err.message or write your own message
+            const errorMsg = `Произошла ошибка: ${err}`
+
+            alert(errorMsg)
+          },
+          this,
+        )
+    },
+
+    pointToDelete(value) {
+      this.coordinatesArr.splice(value, 1)
+      const points = JSON.parse(JSON.stringify(this.coordinatesArr))
+      console.log(this.coordinatesArr)
+      const toRawMap = toRaw(this.myMap)
+      toRawMap.geoObjects.removeAll()
+
+      if (points.length === 1) {
+        const placemark = new window.ymaps.Placemark(points[0])
+
+        toRawMap.geoObjects.add(placemark)
+        toRawMap.setCenter(points[0])
+        return
+      }
+      window.ymaps
+        .route(points, {
+          multiRoute: false,
+        })
+        .done(
+          route => {
+            route.options.set('mapStateAutoApply', true)
+            toRawMap.geoObjects.add(route)
+          },
+          err => {
+            // err.message or write your own message
+            const errorMsg = `Произошла ошибка: ${err}`
+
+            alert(errorMsg)
+          },
+          this,
+        )
+    },
+  },
+}
+</script>
 
 <style scoped>
 header {
