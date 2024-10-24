@@ -83,7 +83,6 @@ export default {
         })
         .catch(err => alert(`Произошла ошибка: ${err}`))
       this.adressList.push(this.adressField)
-      console.log(this.adressList)
       this.adressField = ''
     },
     buttonClick() {
