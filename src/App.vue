@@ -68,6 +68,11 @@ export default {
 
     // добавление адреса в список и отправка координат точки
     addPoint(adressInputValue) {
+      if (!adressInputValue) {
+        alert('Введите значение')
+        return
+      }
+
       this.adressField = adressInputValue
 
       const resultCoordinates = window.ymaps.geocode(this.adressField)
@@ -125,8 +130,10 @@ export default {
 
     pointToDelete(value) {
       this.coordinatesArr.splice(value, 1)
+      this.adressList.splice(value, 1)
+      console.log(this.adressList)
       const points = JSON.parse(JSON.stringify(this.coordinatesArr))
-      console.log(this.coordinatesArr)
+      // console.log(this.coordinatesArr)
       const toRawMap = toRaw(this.myMap)
       toRawMap.geoObjects.removeAll()
 
